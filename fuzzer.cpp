@@ -12,15 +12,14 @@ extern "C" {
 }
 #endif
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+template<unsigned parseFlags>
+void fuzzWithFlags(const std::string &s)
 {
-    const std::string s(data, data + size);
-
     /* Parse input to rapidjson::Document */
     rapidjson::Document document;
-    rapidjson::ParseResult pr = document.Parse(s.c_str());
+    rapidjson::ParseResult pr = document.Parse<parseFlags>(s.c_str());
     if ( !pr ) {
-        return 0;
+        return;
     }
 
     /* Convert from rapidjson::Document to string */
@@ -33,6 +32,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         __msan_check_mem_is_initialized(str.data(), str.size());
     }
 #endif
+}
+
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+    const std::string s(data, data + size);
+
+    fuzzWithFlags<rapidjson::kParseDefaultFlags>(s);\
+    fuzzWithFlags<rapidjson::kParseFullPrecisionFlag>(s);
+    fuzzWithFlags<rapidjson::kParseNumbersAsStringsFlag>(s);
+    fuzzWithFlags<rapidjson::kParseCommentsFlag>(s);
 
     return 0;
 }
